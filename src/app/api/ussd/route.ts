@@ -33,6 +33,22 @@ function respond(msisdn: string, userdata: string, msg: string, continueSession:
     });
 }
 
+/* ✅ ADD THIS GET HANDLER — REQUIRED FOR NALO */
+export async function GET(req: NextRequest) {
+    const url = new URL(req.url);
+
+    const body: USSDRequest = {
+        USERID: url.searchParams.get('USERID') || '',
+        MSISDN: url.searchParams.get('MSISDN') || '',
+        USERDATA: url.searchParams.get('USERDATA') || '',
+        MSGTYPE: url.searchParams.get('MSGTYPE') === 'true',
+    };
+
+    return POST({
+        json: async () => body,
+    } as any);
+}
+
 export async function POST(req: NextRequest) {
     try {
         const body: USSDRequest = await req.json();
