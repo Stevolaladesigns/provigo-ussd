@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { initializePaystackTransaction } from '@/lib/paystack';
 import { FieldValue } from 'firebase-admin/firestore';
 
-const NALO_USER_ID = process.env.NALO_USER_ID || 'PROVISSD';
+const NALO_USER_ID = process.env.NALO_USER_ID || 'PR0VISSD';
 const SESSION_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
 interface USSDRequest {
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
             return respond(
                 MSISDN,
                 USERDATA,
-                'Welcome to ProviGO 🎒\nComfort for Parents & Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
+                'Welcome to ProviGO \nComfort for Parents & Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
                 true
             );
         }
