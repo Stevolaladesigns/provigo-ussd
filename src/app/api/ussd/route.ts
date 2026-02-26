@@ -37,13 +37,28 @@ function respond(userid: string, msisdn: string, userdata: string, msg: string, 
 }
 
 export async function POST(req: NextRequest) {
+    let MSISDN = '', USERDATA = '', USERID = '', MSGTYPE: any = false;
+
     try {
-        const body: USSDRequest = await req.json();
-        console.log('Incoming USSD Request:', JSON.stringify(body, null, 2));
+        const contentType = req.headers.get('content-type') || '';
 
-        const { MSISDN, USERDATA, USERID, MSGTYPE } = body;
+        if (contentType.includes('application/json')) {
+            const body = await req.json();
+            console.log('Incoming USSD JSON:', JSON.stringify(body, null, 2));
+            MSISDN = body.MSISDN || '';
+            USERDATA = body.USERDATA || '';
+            USERID = body.USERID || '';
+            MSGTYPE = body.MSGTYPE;
+        } else {
+            const formData = await req.formData();
+            console.log('Incoming USSD Form Data:', Object.fromEntries(formData.entries()));
+            MSISDN = formData.get('MSISDN') as string || '';
+            USERDATA = formData.get('USERDATA') as string || '';
+            USERID = formData.get('USERID') as string || '';
+            const msgTypeVal = formData.get('MSGTYPE');
+            MSGTYPE = msgTypeVal === 'true' || msgTypeVal === '1';
+        }
 
-        // Validation - Log but echo back the USERID to be compliant
         if (!USERID) {
             console.error('Missing USERID in request');
             return respond(NALO_USER_ID, MSISDN, USERDATA, 'Invalid request. Please try again.', false);
@@ -84,7 +99,7 @@ export async function POST(req: NextRequest) {
                 USERID,
                 MSISDN,
                 USERDATA,
-                'Welcome to ProviGO \nComfort for Parents & Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
+                'Welcome to ProviGO\nComfort for Parents and Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
                 true
             );
         }
@@ -100,7 +115,7 @@ export async function POST(req: NextRequest) {
                         USERID,
                         MSISDN,
                         USERDATA,
-                        'Pick your pack:\n\n1. Starter - GH₵350\n2. Ready Box - GH₵580\n3. Dadabee - GH₵780\n4. Back',
+                        'Pick your pack:\n\n1. Starter - GHS 350\n2. Ready Box - GHS 580\n3. Dadabee - GHS 780\n4. Back',
                         true
                     );
 
@@ -110,7 +125,7 @@ export async function POST(req: NextRequest) {
                         USERID,
                         MSISDN,
                         USERDATA,
-                        '📦 ProviGO Packages:\n\n1. Starter (GH₵350): Milo, Nido, Gari, Sugar, Shito, Biscuits & Toiletries.\n\n2. Ready Box (GH₵580): Starter + Milk, Drinks, Snacks, Notebooks & more Toiletries.\n\n3. Dadabee (GH₵780): Full box: Double Milo/Nido, Cornflakes, plenty Snacks, 15 Books & huge Soap pack.\n\n4. Back',
+                        'ProviGO Packages:\n\n1. Starter (GHS 350): Milo, Nido, Gari, Sugar, Shito, Biscuits and Toiletries.\n\n2. Ready Box (GHS 580): Starter + Milk, Drinks, Snacks, Notebooks and more Toiletries.\n\n3. Dadabee (GHS 780): Full box: Double Milo/Nido, Cornflakes, plenty Snacks, 15 Books and huge Soap pack.\n\n4. Back',
                         true
                     );
 
@@ -130,7 +145,7 @@ export async function POST(req: NextRequest) {
                         USERID,
                         MSISDN,
                         USERDATA,
-                        '📞 Contact ProviGO:\n\nCall/WhatsApp: 0247112620\nEmail: provigogh@gmail.com\n\nThank you!',
+                        'Contact ProviGO:\n\nCall/WhatsApp: 0247112620\nEmail: provigogh@gmail.com\n\nThank you!',
                         false
                     );
 
@@ -153,7 +168,7 @@ export async function POST(req: NextRequest) {
                     USERID,
                     MSISDN,
                     USERDATA,
-                    'Welcome to ProviGO 🎒\nComfort for Parents & Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
+                    'Welcome to ProviGO\nComfort for Parents and Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
                     true
                 );
             }
@@ -161,7 +176,7 @@ export async function POST(req: NextRequest) {
                 USERID,
                 MSISDN,
                 USERDATA,
-                '📦 ProviGO Packages:\n\n1. Starter (GH₵350): Milo, Nido, Gari, Sugar, Shito, Biscuits & Toiletries.\n\n2. Ready Box (GH₵580): Starter + Milk, Drinks, Snacks, Notebooks & more Toiletries.\n\n3. Dadabee (GH₵780): Full box: Double Milo/Nido, Cornflakes, plenty Snacks, 15 Books & huge Soap pack.\n\n4. Back',
+                'ProviGO Packages:\n\n1. Starter (GHS 350): Milo, Nido, Gari, Sugar, Shito, Biscuits and Toiletries.\n\n2. Ready Box (GHS 580): Starter + Milk, Drinks, Snacks, Notebooks and more Toiletries.\n\n3. Dadabee (GHS 780): Full box: Double Milo/Nido, Cornflakes, plenty Snacks, 15 Books and huge Soap pack.\n\n4. Back',
                 true
             );
         }
@@ -180,7 +195,7 @@ export async function POST(req: NextRequest) {
                     USERID,
                     MSISDN,
                     USERDATA,
-                    'Welcome to ProviGO 🎒\nComfort for Parents & Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
+                    'Welcome to ProviGO\nComfort for Parents and Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
                     true
                 );
             }
@@ -191,7 +206,7 @@ export async function POST(req: NextRequest) {
                     USERID,
                     MSISDN,
                     USERDATA,
-                    'Invalid selection. Pick your pack:\n\n1. Starter - GH₵350\n2. Ready Box - GH₵580\n3. Dadabee - GH₵780\n4. Back',
+                    'Invalid selection. Pick your pack:\n\n1. Starter - GHS 350\n2. Ready Box - GHS 580\n3. Dadabee - GHS 780\n4. Back',
                     true
                 );
             }
@@ -220,13 +235,13 @@ export async function POST(req: NextRequest) {
                 return respond(USERID, MSISDN, USERDATA, 'Please enter a valid student name:', true);
             }
             await sessionRef.update({ step: 'ENTER_HOUSE', studentName: input });
-            return respond(USERID, MSISDN, USERDATA, 'Enter House & Year (e.g. Akufo Hall, Year 2):', true);
+            return respond(USERID, MSISDN, USERDATA, 'Enter House and Year (e.g. Akufo Hall, Year 2):', true);
         }
 
         // ─── ENTER HOUSE & YEAR ───────────────────
         if (session.step === 'ENTER_HOUSE') {
             if (!input || input.length < 2) {
-                return respond(USERID, MSISDN, USERDATA, 'Please enter a valid house & year:', true);
+                return respond(USERID, MSISDN, USERDATA, 'Please enter a valid house and year:', true);
             }
             await sessionRef.update({ step: 'CONFIRMATION', houseYear: input });
 
@@ -238,7 +253,7 @@ export async function POST(req: NextRequest) {
                 USERID,
                 MSISDN,
                 USERDATA,
-                `Send ${s.selectedPackage} to ${s.studentName} at ${s.schoolName}?\nHouse/Year: ${s.houseYear}\nTotal: GH₵${s.packagePrice}\n\n1. Pay with Momo\n2. Cancel`,
+                `Send ${s.selectedPackage} to ${s.studentName} at ${s.schoolName}?\nHouse/Year: ${s.houseYear}\nTotal: GHS ${s.packagePrice}\n\n1. Pay with Momo\n2. Cancel`,
                 true
             );
         }
@@ -309,7 +324,7 @@ export async function POST(req: NextRequest) {
                     USERID,
                     MSISDN,
                     USERDATA,
-                    'Payment request sent to your phone.\\nPlease complete the Mobile Money payment to confirm your order.\\n\\nThank you for choosing ProviGO! 🎒',
+                    'Payment request sent to your phone.\nPlease complete the Mobile Money payment to confirm your order.\n\nThank you for choosing ProviGO!',
                     false
                 );
             }
@@ -362,7 +377,7 @@ export async function POST(req: NextRequest) {
                 USERID,
                 MSISDN,
                 USERDATA,
-                `Order Found:\n\nOrder ID: ${order.orderId || 'Pending'}\nPackage: ${order.package}\nPayment: ${order.paymentStatus === 'paid' ? 'Paid ✅' : 'Pending ⏳'}\nStatus: ${order.orderStatus}\n\nThank you for using ProviGO!`,
+                `Order Found:\n\nOrder ID: ${order.orderId || 'Pending'}\nPackage: ${order.package}\nPayment: ${order.paymentStatus === 'paid' ? 'Paid' : 'Pending'}\nStatus: ${order.orderStatus}\n\nThank you for using ProviGO!`,
                 false
             );
         }
@@ -377,16 +392,17 @@ export async function POST(req: NextRequest) {
             false
         );
     } catch (error) {
-        console.error('USSD Error:', error);
-        return NextResponse.json(
-            {
-                USERID: NALO_USER_ID, // Use constant fallback
-                MSISDN: '',
-                USERDATA: '',
-                MSG: 'An error occurred. Please try again.',
-                MSGTYPE: false,
-            },
-            { status: 200 }
-        );
+        console.error('USSD Catch-All Error:', error);
+
+        const resData = {
+            USERID: USERID || NALO_USER_ID,
+            MSISDN: MSISDN || '',
+            USERDATA: USERDATA || '',
+            MSG: 'An error occurred. Please try again later.',
+            MSGTYPE: false,
+        };
+
+        console.log('Error Response:', JSON.stringify(resData, null, 2));
+        return NextResponse.json(resData);
     }
 }
