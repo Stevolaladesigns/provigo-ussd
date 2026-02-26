@@ -4,7 +4,7 @@ import { initializePaystackTransaction } from '@/lib/paystack';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const NALO_USER_ID = process.env.NALO_USER_ID || 'PR0VISSD';
-const SESSION_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+const SESSION_EXPIRY_MS = 3 * 60 * 1000; // 3 minutes
 
 interface USSDRequest {
     USERID: string;
@@ -31,22 +31,6 @@ function respond(msisdn: string, userdata: string, msg: string, continueSession:
         MSG: msg,
         MSGTYPE: continueSession,
     });
-}
-
-/* ✅ ADD THIS GET HANDLER — REQUIRED FOR NALO */
-export async function GET(req: NextRequest) {
-    const url = new URL(req.url);
-
-    const body: USSDRequest = {
-        USERID: url.searchParams.get('USERID') || '',
-        MSISDN: url.searchParams.get('MSISDN') || '',
-        USERDATA: url.searchParams.get('USERDATA') || '',
-        MSGTYPE: url.searchParams.get('MSGTYPE') === 'true',
-    };
-
-    return POST({
-        json: async () => body,
-    } as any);
 }
 
 export async function POST(req: NextRequest) {
