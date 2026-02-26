@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { initializePaystackTransaction } from '@/lib/paystack';
 import { FieldValue } from 'firebase-admin/firestore';
 
-const NALO_USER_ID = process.env.NALO_USER_ID || 'PR0VISSD';
+const NALO_USER_ID = process.env.NALO_USER_ID || 'PROVISSD';
 const SESSION_EXPIRY_MS = 3 * 60 * 1000; // 3 minutes
 
 interface USSDRequest {
