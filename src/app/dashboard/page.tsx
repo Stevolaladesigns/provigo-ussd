@@ -20,6 +20,7 @@ interface Order {
     schoolName: string;
     package: string;
     price: number;
+    houseYear: string;
     paymentStatus: string;
     orderStatus: string;
     createdAt: string;
@@ -219,6 +220,7 @@ export default function DashboardPage() {
                                 <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Order ID</th>
                                 <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Student Name</th>
                                 <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">School</th>
+                                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">House & Year</th>
                                 <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Package</th>
                                 <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Amount</th>
                                 <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Status</th>
@@ -238,6 +240,7 @@ export default function DashboardPage() {
                                         <td className="px-6 py-4 text-sm font-medium text-gray-900">{order.orderId || 'Pending'}</td>
                                         <td className="px-6 py-4 text-sm text-gray-700">{order.studentName}</td>
                                         <td className="px-6 py-4 text-sm text-gray-500">{order.schoolName}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-500">{order.houseYear}</td>
                                         <td className="px-6 py-4">
                                             <span
                                                 className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium"
