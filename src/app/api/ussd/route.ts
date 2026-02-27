@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
                         USERID,
                         MSISDN,
                         USERDATA,
-                        'ProviGO Packages:\n\n1. Starter (GHS 350): Milo, Nido, Gari, Sugar, Shito, Biscuits and Toiletries.\n\n2. Ready Box (GHS 580): Starter + Milk, Drinks, Snacks, Notebooks and more Toiletries.\n\n3. Dadabee (GHS 780): Full box: Double Milo/Nido, Cornflakes, plenty Snacks, 15 Books and huge Soap pack.\n\n4. Back',
+                        'ProviGO Packages:\n\n1. Starter (GHS 350): Essentials like Milo, Nido, Gari, Sugar, Shito, Biscuits & Toiletries.\n\n2. Ready Box (GHS 580): Starter + Milk, Drinks, Snacks, Notebooks & more Toiletries.\n\n3. Dadabee (GHS 780): Full box: Double Milo/ Nido, Cornflakes, plenty Snacks, 15 Books & huge Soap pack.\n\n4. Back',
                         true
                     );
 
@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
                 USERID,
                 MSISDN,
                 USERDATA,
-                'ProviGO Packages:\n\n1. Starter (GHS 350): Milo, Nido, Gari, Sugar, Shito, Biscuits and Toiletries.\n\n2. Ready Box (GHS 580): Starter + Milk, Drinks, Snacks, Notebooks and more Toiletries.\n\n3. Dadabee (GHS 780): Full box: Double Milo/Nido, Cornflakes, plenty Snacks, 15 Books and huge Soap pack.\n\n4. Back',
+                'ProviGO Packages:\n\n1. Starter (GHS 350): Essentials like Milo, Nido, Gari, Sugar, Shito, Biscuits & Toiletries.\n\n2. Ready Box (GHS 580): Starter + Milk, Drinks, Snacks, Notebooks & more Toiletries.\n\n3. Dadabee (GHS 780): Full box: Double Milo/ Nido, Cornflakes, plenty Snacks, 15 Books & huge Soap pack.\n\n4. Back',
                 true
             );
         }
