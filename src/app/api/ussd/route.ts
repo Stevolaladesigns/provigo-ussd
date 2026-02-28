@@ -120,12 +120,12 @@ export async function POST(req: NextRequest) {
                     );
 
                 case '2':
-                    await sessionRef.update({ step: 'SEE_PACKAGES' });
+                    await sessionRef.update({ step: 'SEE_PACKAGES_1' });
                     return respond(
                         USERID,
                         MSISDN,
                         USERDATA,
-                        'ProviGO Packages:\n\n1. Starter (GHS 350): Essentials like Milo, Nido, Gari, Sugar, Shito, Biscuits & Toiletries.\n\n2. Ready Box (GHS 580): Starter + Milk, Drinks, Snacks, Notebooks & more Toiletries.\n\n3. Dadabee (GHS 780): Full box: Double Milo/ Nido, Cornflakes, plenty Snacks, 15 Books & huge Soap pack.\n\n4. Back',
+                        'Packs(1/2):\n1.Starter(350GHS):Milo,Nido,Gari,Sugar,Shito,Biscuits,soap\n2.Ready(580GHS):Starter+Milk,Drinks,Snacks,Books\n3.Next\n4.Back',
                         true
                     );
 
@@ -161,7 +161,37 @@ export async function POST(req: NextRequest) {
         }
 
         // ─── SEE PACKAGES ─────────────────────────
-        if (session.step === 'SEE_PACKAGES') {
+        if (session.step === 'SEE_PACKAGES_1') {
+            if (input === '4') {
+                await sessionRef.update({ step: 'MAIN_MENU' });
+                return respond(
+                    USERID,
+                    MSISDN,
+                    USERDATA,
+                    'Welcome to ProviGO\nComfort for Parents and Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
+                    true
+                );
+            }
+            if (input === '3') {
+                await sessionRef.update({ step: 'SEE_PACKAGES_2' });
+                return respond(
+                    USERID,
+                    MSISDN,
+                    USERDATA,
+                    'Packs(2/2):\n3.Dadabee(780GHS):Double Milo,Cornflakes,snacks,15 Books,huge Soap pack.\n4.Back',
+                    true
+                );
+            }
+            return respond(
+                USERID,
+                MSISDN,
+                USERDATA,
+                'Packs(1/2):\n1.Starter(350GHS):Milo,Nido,Gari,Sugar,Shito,Biscuits,soap\n2.Ready(580GHS):Starter+Milk,Drinks,Snacks,Books\n3.Next\n4.Back',
+                true
+            );
+        }
+
+        if (session.step === 'SEE_PACKAGES_2') {
             if (input === '4') {
                 await sessionRef.update({ step: 'MAIN_MENU' });
                 return respond(
@@ -176,7 +206,7 @@ export async function POST(req: NextRequest) {
                 USERID,
                 MSISDN,
                 USERDATA,
-                'ProviGO Packages:\n\n1. Starter (GHS 350): Essentials like Milo, Nido, Gari, Sugar, Shito, Biscuits & Toiletries.\n\n2. Ready Box (GHS 580): Starter + Milk, Drinks, Snacks, Notebooks & more Toiletries.\n\n3. Dadabee (GHS 780): Full box: Double Milo/ Nido, Cornflakes, plenty Snacks, 15 Books & huge Soap pack.\n\n4. Back',
+                'Packs(2/2):\n3.Dadabee(780GHS):Double Milo,Cornflakes,snacks,15 Books,huge Soap pack.\n4.Back',
                 true
             );
         }
