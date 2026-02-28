@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { initializePaystackTransaction } from '@/lib/paystack';
+import { chargeWithMobileMoney } from '@/lib/paystack';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const NALO_USER_ID = process.env.NALO_USER_ID || 'PROVISSD';
@@ -296,66 +296,13 @@ export async function POST(req: NextRequest) {
             }
 
             if (input === '1') {
-                // Refresh session
-                const freshDoc = await sessionRef.get();
-                const s = freshDoc.data() as SessionData;
-
-                // Create order in Firestore
-                const orderRef = adminDb.collection('orders').doc();
-                const orderData = {
-                    orderId: '', // Will be set after payment
-                    studentName: s.studentName,
-                    schoolName: s.schoolName,
-                    houseYear: s.houseYear,
-                    package: s.selectedPackage,
-                    price: s.packagePrice,
-                    phoneNumber: MSISDN,
-                    paymentStatus: 'pending',
-                    orderStatus: 'Processing',
-                    createdAt: FieldValue.serverTimestamp(),
-                    updatedAt: FieldValue.serverTimestamp(),
-                    firestoreDocId: orderRef.id,
-                };
-
-                await orderRef.set(orderData);
-
-                // Initialize Paystack transaction
-                const email = `${MSISDN.replace('+', '')}@provigo.app`;
-                const amountInPesewas = (s.packagePrice || 0) * 100;
-
-                try {
-                    const paystackResponse = await initializePaystackTransaction({
-                        email,
-                        amount: amountInPesewas,
-                        metadata: {
-                            studentName: s.studentName || '',
-                            schoolName: s.schoolName || '',
-                            package: s.selectedPackage || '',
-                            houseYear: s.houseYear || '',
-                            phoneNumber: MSISDN,
-                            orderId: orderRef.id,
-                        },
-                    });
-
-                    // Update order with Paystack reference
-                    if (paystackResponse.status) {
-                        await orderRef.update({
-                            paystackReference: paystackResponse.data.reference,
-                        });
-                    }
-                } catch (error) {
-                    console.error('Paystack error:', error);
-                }
-
-                // Clean up session
-                await sessionRef.delete();
-
+                await sessionRef.update({ step: 'SELECT_NETWORK' });
                 return respond(
                     USERID,
                     MSISDN,
                     USERDATA,
-                    'Payment request sent to your phone.\nPlease complete the Mobile Money payment to confirm your order.\n\nThank you for choosing ProviGO!',
-                    false
+                    'Select Mobile Money Network:\n1. MTN\n2. Telecel / Vodafone\n3. AT / AirtelTigo',
+                    true
                 );
             }
 
@@ -363,8 +310,100 @@ export async function POST(req: NextRequest) {
                 USERID,
                 MSISDN,
                 USERDATA,
-                'Invalid option.\\n\\n1. Pay with Momo\\n2. Cancel',
+                'Invalid option.\n\n1. Pay with Momo\n2. Cancel',
                 true
+            );
+        }
+
+        // ─── SELECT NETWORK ───────────────────────
+        if (session.step === 'SELECT_NETWORK') {
+            const networks: Record<string, string> = {
+                '1': 'mtn',
+                '2': 'vod',
+                '3': 'tgo',
+            };
+
+            const provider = networks[input];
+            if (!provider) {
+                return respond(
+                    USERID,
+                    MSISDN,
+                    USERDATA,
+                    'Invalid network.\n1. MTN\n2. Telecel/Vodafone\n3. AT/AirtelTigo',
+                    true
+                );
+            }
+
+            // Refresh session
+            const freshDoc = await sessionRef.get();
+            const s = freshDoc.data() as SessionData;
+
+            // Format phone number to start with 0 for Paystack and SMS
+            let formattedPhone = MSISDN;
+            if (formattedPhone.startsWith('+233')) formattedPhone = '0' + formattedPhone.substring(4);
+            if (formattedPhone.startsWith('233')) formattedPhone = '0' + formattedPhone.substring(3);
+
+            // Create order in Firestore
+            const orderRef = adminDb.collection('orders').doc();
+            const orderData = {
+                orderId: '', // Will be set after payment
+                studentName: s.studentName,
+                schoolName: s.schoolName,
+                houseYear: s.houseYear,
+                package: s.selectedPackage,
+                price: s.packagePrice,
+                phoneNumber: formattedPhone, // Use formatted phone for Paystack & SMS
+                paymentStatus: 'pending',
+                orderStatus: 'Processing',
+                createdAt: FieldValue.serverTimestamp(),
+                updatedAt: FieldValue.serverTimestamp(),
+                firestoreDocId: orderRef.id,
+            };
+
+            await orderRef.set(orderData);
+
+            // Initialize Paystack transaction using Charge API for STK Push
+            const email = `${formattedPhone}@provigo.app`;
+            const amountInPesewas = (s.packagePrice || 0) * 100;
+
+            try {
+                const paystackResponse = await chargeWithMobileMoney({
+                    email,
+                    amount: amountInPesewas,
+                    mobile_money: {
+                        phone: formattedPhone,
+                        provider,
+                    },
+                    metadata: {
+                        studentName: s.studentName || '',
+                        schoolName: s.schoolName || '',
+                        package: s.selectedPackage || '',
+                        houseYear: s.houseYear || '',
+                        phoneNumber: MSISDN,
+                        orderId: orderRef.id,
+                    },
+                });
+
+                // Update order with Paystack reference
+                if (paystackResponse.status || paystackResponse.data?.reference) {
+                    await orderRef.update({
+                        paystackReference: paystackResponse.data?.reference || 'N/A',
+                        paymentInitiated: true
+                    });
+                }
+            } catch (error) {
+                console.error('Paystack error:', error);
+            }
+
+            // Clean up session
+            await sessionRef.delete();
+
+            return respond(
+                USERID,
+                MSISDN,
+                USERDATA,
+                'Payment request sent to your phone.\nPlease complete the Mobile Money payment to confirm your order.\n\nThank you for choosing ProviGO!',
+                false
             );
         }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Eye, RefreshCw, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Eye, RefreshCw, ChevronLeft, ChevronRight, Search, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
 
 interface Order {
     id: string;
@@ -24,6 +24,9 @@ export default function AllOrdersPage() {
     const [search, setSearch] = useState('');
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [updatingStatus, setUpdatingStatus] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState<Partial<Order>>({});
+    const [deleting, setDeleting] = useState(false);
     const perPage = 10;
 
     const fetchOrders = async () => {
@@ -67,6 +70,40 @@ export default function AllOrdersPage() {
             console.error('Error updating order:', error);
         } finally {
             setUpdatingStatus(false);
+        }
+    };
+
+    const handleEditSave = async () => {
+        setUpdatingStatus(true);
+        try {
+            await fetch('/api/orders/edit', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: selectedOrder?.id, ...editForm }),
+            });
+            setIsEditing(false);
+            await fetchOrders();
+            setSelectedOrder(null);
+        } catch (error) {
+            console.error('Error saving order details:', error);
+        } finally {
+            setUpdatingStatus(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this order? This cannot be undone.')) return;
+        setDeleting(true);
+        try {
+            await fetch(`/api/orders/delete?id=${id}`, {
+                method: 'DELETE',
+            });
+            setSelectedOrder(null);
+            await fetchOrders();
+        } catch (error) {
+            console.error('Error deleting order:', error);
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -244,77 +281,209 @@ export default function AllOrdersPage() {
                     <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
                         <div className="p-6 border-b border-gray-100">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-semibold text-gray-900">Order Details</h3>
-                                <button
-                                    onClick={() => setSelectedOrder(null)}
-                                    className="text-gray-400 hover:text-gray-600 text-xl"
-                                >
-                                    ✕
-                                </button>
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    {isEditing ? 'Edit Order details' : 'Order Details'}
+                                </h3>
+                                <div className="flex gap-2">
+                                    {!isEditing && (
+                                        <>
+                                            <button
+                                                onClick={() => {
+                                                    setEditForm({ ...selectedOrder });
+                                                    setIsEditing(true);
+                                                }}
+                                                className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                                                title="Edit"
+                                            >
+                                                <Edit2 className="w-5 h-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => selectedOrder && handleDelete(selectedOrder.id)}
+                                                disabled={deleting}
+                                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </>
+                                    )}
+                                    <button
+                                        onClick={() => {
+                                            setSelectedOrder(null);
+                                            setIsEditing(false);
+                                        }}
+                                        className="text-gray-400 hover:text-gray-600 text-xl ml-2"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-xs text-gray-400 mb-1">Order ID</p>
-                                    <p className="font-medium text-gray-900">{selectedOrder.orderId || 'Pending'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-400 mb-1">Package</p>
-                                    <p className="font-medium text-gray-900">{selectedOrder.package}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-400 mb-1">Student</p>
-                                    <p className="font-medium text-gray-900">{selectedOrder.studentName}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-400 mb-1">School</p>
-                                    <p className="font-medium text-gray-900">{selectedOrder.schoolName}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-400 mb-1">House & Year</p>
-                                    <p className="font-medium text-gray-900">{selectedOrder.houseYear}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-400 mb-1">Phone</p>
-                                    <p className="font-medium text-gray-900">{selectedOrder.phoneNumber}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-400 mb-1">Amount</p>
-                                    <p className="font-medium text-gray-900">GH₵ {selectedOrder.price}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-400 mb-1">Payment</p>
-                                    <span
-                                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-medium ${selectedOrder.paymentStatus === 'paid'
-                                            ? 'bg-green-50 text-green-700'
-                                            : 'bg-amber-50 text-amber-700'
-                                            }`}
-                                    >
-                                        {selectedOrder.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Status Update */}
-                            <div className="pt-4 border-t border-gray-100">
-                                <p className="text-sm font-medium text-gray-700 mb-3">Update Status</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {['Processing', 'Confirmed', 'Dispatched', 'Delivered'].map((status) => (
-                                        <button
-                                            key={status}
-                                            onClick={() => updateOrderStatus(selectedOrder.id, status)}
-                                            disabled={updatingStatus || selectedOrder.orderStatus === status}
-                                            className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${selectedOrder.orderStatus === status
-                                                ? 'bg-green-600 text-white shadow-md'
-                                                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                                                } disabled:opacity-50`}
+                            {isEditing ? (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <label className="text-xs text-gray-400 mb-1 block">Student Name</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.studentName || ''}
+                                            onChange={(e) => setEditForm(prev => ({ ...prev, studentName: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                        />
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <label className="text-xs text-gray-400 mb-1 block">School</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.schoolName || ''}
+                                            onChange={(e) => setEditForm(prev => ({ ...prev, schoolName: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                        />
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <label className="text-xs text-gray-400 mb-1 block">House & Year</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.houseYear || ''}
+                                            onChange={(e) => setEditForm(prev => ({ ...prev, houseYear: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                        />
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <label className="text-xs text-gray-400 mb-1 block">Phone</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.phoneNumber || ''}
+                                            onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                        />
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <label className="text-xs text-gray-400 mb-1 block">Package</label>
+                                        <select
+                                            value={editForm.package || ''}
+                                            onChange={(e) => setEditForm(prev => ({ ...prev, package: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
                                         >
-                                            {updatingStatus ? '...' : status}
+                                            <option value="Starter">Starter</option>
+                                            <option value="Ready Box">Ready Box</option>
+                                            <option value="Dadabee">Dadabee</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <label className="text-xs text-gray-400 mb-1 block">Amount</label>
+                                        <input
+                                            type="number"
+                                            value={editForm.price || ''}
+                                            onChange={(e) => setEditForm(prev => ({ ...prev, price: Number(e.target.value) }))}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                        />
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <label className="text-xs text-gray-400 mb-1 block">Payment Status</label>
+                                        <select
+                                            value={editForm.paymentStatus || ''}
+                                            onChange={(e) => setEditForm(prev => ({ ...prev, paymentStatus: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                                        >
+                                            <option value="pending">Pending</option>
+                                            <option value="paid">Paid</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <label className="text-xs text-gray-400 mb-1 block">Order Status</label>
+                                        <select
+                                            value={editForm.orderStatus || ''}
+                                            onChange={(e) => setEditForm(prev => ({ ...prev, orderStatus: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                                        >
+                                            <option value="Processing">Processing</option>
+                                            <option value="Confirmed">Confirmed</option>
+                                            <option value="Dispatched">Dispatched</option>
+                                            <option value="Delivered">Delivered</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-span-2 flex justify-end gap-2 mt-4">
+                                        <button
+                                            onClick={() => setIsEditing(false)}
+                                            className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                        >
+                                            Cancel
                                         </button>
-                                    ))}
+                                        <button
+                                            onClick={handleEditSave}
+                                            disabled={updatingStatus}
+                                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+                                        >
+                                            {updatingStatus ? 'Saving...' : 'Save Changes'}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-xs text-gray-400 mb-1">Order ID</p>
+                                            <p className="font-medium text-gray-900">{selectedOrder.orderId || 'Pending'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-400 mb-1">Package</p>
+                                            <p className="font-medium text-gray-900">{selectedOrder.package}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-400 mb-1">Student</p>
+                                            <p className="font-medium text-gray-900">{selectedOrder.studentName}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-400 mb-1">School</p>
+                                            <p className="font-medium text-gray-900">{selectedOrder.schoolName}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-400 mb-1">House & Year</p>
+                                            <p className="font-medium text-gray-900">{selectedOrder.houseYear}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-400 mb-1">Phone</p>
+                                            <p className="font-medium text-gray-900">{selectedOrder.phoneNumber}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-400 mb-1">Amount</p>
+                                            <p className="font-medium text-gray-900">GH₵ {selectedOrder.price}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-400 mb-1">Payment</p>
+                                            <span
+                                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-medium ${selectedOrder.paymentStatus === 'paid'
+                                                    ? 'bg-green-50 text-green-700'
+                                                    : 'bg-amber-50 text-amber-700'
+                                                    }`}
+                                            >
+                                                {selectedOrder.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Status Update */}
+                                    <div className="pt-4 border-t border-gray-100">
+                                        <p className="text-sm font-medium text-gray-700 mb-3">Update Status</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {['Processing', 'Confirmed', 'Dispatched', 'Delivered'].map((status) => (
+                                                <button
+                                                    key={status}
+                                                    onClick={() => updateOrderStatus(selectedOrder.id, status)}
+                                                    disabled={updatingStatus || selectedOrder.orderStatus === status}
+                                                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${selectedOrder.orderStatus === status
+                                                        ? 'bg-green-600 text-white shadow-md'
+                                                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                                                        } disabled:opacity-50`}
+                                                >
+                                                    {updatingStatus ? '...' : status}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
