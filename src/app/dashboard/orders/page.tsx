@@ -27,6 +27,7 @@ export default function AllOrdersPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState<Partial<Order>>({});
     const [deleting, setDeleting] = useState(false);
+    const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
     const perPage = 10;
 
     const fetchOrders = async () => {
@@ -91,13 +92,14 @@ export default function AllOrdersPage() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this order? This cannot be undone.')) return;
+    const executeDelete = async () => {
+        if (!orderToDelete) return;
         setDeleting(true);
         try {
-            await fetch(`/api/orders/delete?id=${id}`, {
+            await fetch(`/api/orders/delete?id=${orderToDelete.id}`, {
                 method: 'DELETE',
             });
+            setOrderToDelete(null);
             setSelectedOrder(null);
             await fetchOrders();
         } catch (error) {
@@ -298,7 +300,7 @@ export default function AllOrdersPage() {
                                                 <Edit2 className="w-5 h-5" />
                                             </button>
                                             <button
-                                                onClick={() => selectedOrder && handleDelete(selectedOrder.id)}
+                                                onClick={() => selectedOrder && setOrderToDelete(selectedOrder)}
                                                 disabled={deleting}
                                                 className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                                                 title="Delete"
@@ -484,6 +486,38 @@ export default function AllOrdersPage() {
                                     </div>
                                 </>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Delete Confirmation Modal */}
+            {orderToDelete && (
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+                        <div className="text-center">
+                            <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 mx-auto flex items-center justify-center mb-4">
+                                <Trash2 className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Order?</h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Are you sure you want to delete the order for <span className="font-semibold text-gray-700">{orderToDelete.studentName}</span>? This action cannot be undone.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setOrderToDelete(null)}
+                                    disabled={deleting}
+                                    className="flex-1 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={executeDelete}
+                                    disabled={deleting}
+                                    className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+                                >
+                                    {deleting ? 'Deleting...' : 'Delete'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
