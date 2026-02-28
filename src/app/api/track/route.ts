@@ -24,24 +24,38 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const orderDoc = await adminDb.collection('orders').doc(orderId).get();
+        // Search by Document ID or by the human-readable orderId field
+        let orderDoc = await adminDb.collection('orders').doc(orderId).get();
+        let data = orderDoc.exists ? orderDoc.data() : null;
 
-        if (!orderDoc.exists) {
+        if (!data) {
+            const querySnap = await adminDb
+                .collection('orders')
+                .where('orderId', '==', orderId.toUpperCase())
+                .limit(1)
+                .get();
+
+            if (!querySnap.empty) {
+                orderDoc = querySnap.docs[0];
+                data = orderDoc.data();
+            }
+        }
+
+        if (!data) {
             return NextResponse.json(
                 { error: 'Order not found' },
                 { status: 404, headers: corsHeaders }
             );
         }
 
-        const data = orderDoc.data()!;
-
-        // Return relevant tracking data (exclude sensitive info if needed)
+        // Return relevant tracking data matching the database schema
         const trackingData = {
             id: orderDoc.id,
-            status: data.status,
-            packageDetails: data.packageDetails,
-            amount: data.amount,
-            deliveryAddress: data.deliveryAddress,
+            orderId: data.orderId,
+            status: data.orderStatus || 'Processing',
+            packageDetails: data.package || 'Custom',
+            amount: data.price || 0,
+            deliveryAddress: `${data.schoolName || ''}, ${data.houseYear || ''}`.trim().replace(/^, |, $/g, ''),
             orderDate: data.createdAt?.toDate?.()?.toISOString() || null,
             updatedAt: data.updatedAt?.toDate?.()?.toISOString() || null,
         };

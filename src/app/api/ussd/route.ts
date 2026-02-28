@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { chargeWithMobileMoney } from '@/lib/paystack';
+import { chargeWithMobileMoney, submitOTP } from '@/lib/paystack';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const NALO_USER_ID = process.env.NALO_USER_ID || 'PROVISSD';
@@ -20,6 +20,7 @@ interface SessionData {
     schoolName?: string;
     studentName?: string;
     houseYear?: string;
+    paystackReference?: string;
     createdAt: FirebaseFirestore.Timestamp;
 }
 
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
                         USERID,
                         MSISDN,
                         USERDATA,
-                        'Pick your pack:\n\n1. Starter - GHS 350\n2. Ready Box - GHS 580\n3. Dadabee - GHS 780\n4. Back',
+                        'Pick your pack:\n\n1. Starter - GHS 350\n2. Ready Box - GHS 580\n3. Dadabee - GHS 780\n4. Custom - GHS ???\n5. Back',
                         true
                     );
 
@@ -219,7 +220,7 @@ export async function POST(req: NextRequest) {
                 '3': { name: 'Dadabee', price: 780 },
             };
 
-            if (input === '4') {
+            if (input === '5') {
                 await sessionRef.update({ step: 'MAIN_MENU' });
                 return respond(
                     USERID,
@@ -230,13 +231,18 @@ export async function POST(req: NextRequest) {
                 );
             }
 
+            if (input === '4') {
+                await sessionRef.update({ step: 'ENTER_CUSTOM_AMOUNT' });
+                return respond(USERID, MSISDN, USERDATA, 'Enter the amount you wish to pay (GHS):', true);
+            }
+
             const pkg = packages[input];
             if (!pkg) {
                 return respond(
                     USERID,
                     MSISDN,
                     USERDATA,
-                    'Invalid selection. Pick your pack:\n\n1. Starter - GHS 350\n2. Ready Box - GHS 580\n3. Dadabee - GHS 780\n4. Back',
+                    'Invalid selection. Pick your pack:\n\n1. Starter - GHS 350\n2. Ready Box - GHS 580\n3. Dadabee - GHS 780\n4. Custom - GHS ???\n5. Back',
                     true
                 );
             }
@@ -245,6 +251,22 @@ export async function POST(req: NextRequest) {
                 step: 'ENTER_SCHOOL',
                 selectedPackage: pkg.name,
                 packagePrice: pkg.price,
+            });
+
+            return respond(USERID, MSISDN, USERDATA, 'Enter School Name:', true);
+        }
+
+        // ─── ENTER CUSTOM AMOUNT ──────────────────
+        if (session.step === 'ENTER_CUSTOM_AMOUNT') {
+            const amount = parseFloat(input);
+            if (isNaN(amount) || amount <= 0) {
+                return respond(USERID, MSISDN, USERDATA, 'Invalid amount. Please enter a valid number (e.g. 100):', true);
+            }
+
+            await sessionRef.update({
+                step: 'ENTER_SCHOOL',
+                selectedPackage: 'Custom Payment',
+                packagePrice: amount,
             });
 
             return respond(USERID, MSISDN, USERDATA, 'Enter School Name:', true);
@@ -390,12 +412,28 @@ export async function POST(req: NextRequest) {
                         paystackReference: paystackResponse.data?.reference || 'N/A',
                         paymentInitiated: true
                     });
+
+                    // If Paystack requires an OTP, prompt the user
+                    if (paystackResponse.data?.status === 'send_otp') {
+                        await sessionRef.update({
+                            step: 'ENTER_OTP',
+                            paystackReference: paystackResponse.data.reference,
+                        });
+
+                        return respond(
+                            USERID,
+                            MSISDN,
+                            USERDATA,
+                            'Please enter the OTP sent to you via SMS to authorize the payment:',
+                            true
+                        );
+                    }
                 }
             } catch (error) {
                 console.error('Paystack error:', error);
             }
 
-            // Clean up session
+            // Clean up session since no OTP is required
             await sessionRef.delete();
 
             return respond(
@@ -405,6 +443,54 @@ export async function POST(req: NextRequest) {
                 'Payment request sent to your phone.\nPlease complete the Mobile Money payment to confirm your order.\n\nThank you for choosing ProviGO!',
                 false
             );
+        }
+
+        // ─── ENTER OTP ─────────────────────────────
+        if (session.step === 'ENTER_OTP') {
+            if (!input || input.length < 3) {
+                return respond(USERID, MSISDN, USERDATA, 'Please enter a valid OTP:', true);
+            }
+
+            if (!session.paystackReference) {
+                await sessionRef.delete();
+                return respond(USERID, MSISDN, USERDATA, 'Session error. Please try again.', false);
+            }
+
+            try {
+                const otpResponse = await submitOTP({
+                    otp: input,
+                    reference: session.paystackReference,
+                });
+
+                if (otpResponse.status) {
+                    await sessionRef.delete();
+                    return respond(
+                        USERID,
+                        MSISDN,
+                        USERDATA,
+                        'A prompt has been sent to your phone. Please enter your MoMo PIN to approve the transaction.\n\nThank you for choosing ProviGO!',
+                        false
+                    );
+                } else {
+                    return respond(
+                        USERID,
+                        MSISDN,
+                        USERDATA,
+                        `Verification failed: \n${otpResponse.message || 'Invalid OTP'}\nPlease enter the correct OTP:`,
+                        true
+                    );
+                }
+            } catch (error) {
+                console.error('Paystack OTP error:', error);
+                await sessionRef.delete();
+                return respond(
+                    USERID,
+                    MSISDN,
+                    USERDATA,
+                    'An error occurred verifying the OTP. Please try again later.',
+                    false
+                );
+            }
         }
 
         // ─── TRACK ORDER ──────────────────────────

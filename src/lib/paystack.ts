@@ -19,13 +19,20 @@ interface PaystackInitializeParams {
     callback_url?: string;
 }
 
+export interface SubmitOTPParams {
+    otp: string;
+    reference: string;
+}
+
 interface PaystackResponse {
     status: boolean;
     message: string;
     data: {
-        authorization_url: string;
-        access_code: string;
+        authorization_url?: string;
+        access_code?: string;
         reference: string;
+        status?: string;
+        display_text?: string;
     };
 }
 
@@ -72,6 +79,22 @@ export async function chargeWithMobileMoney(params: {
             currency: params.currency || 'GHS',
             mobile_money: params.mobile_money,
             metadata: params.metadata,
+        }),
+    });
+
+    return response.json();
+}
+
+export async function submitOTP(params: SubmitOTPParams): Promise<PaystackResponse> {
+    const response = await fetch('https://api.paystack.co/charge/submit_otp', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            otp: params.otp,
+            reference: params.reference,
         }),
     });
 
