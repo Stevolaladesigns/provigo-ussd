@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
                         USERID,
                         MSISDN,
                         USERDATA,
-                        'Pick your pack:\n\n1. Starter - GHS 350\n2. Ready Box - GHS 580\n3. Dadabee - GHS 780\n4. Custom - GHS ???\n5. Back',
+                        'Pick your pack:\n\n1. Starter - GHS 350\n2. Ready Box - GHS 580\n3. Dadabee - GHS 780\n4. Back',
                         true
                     );
 
@@ -220,7 +220,7 @@ export async function POST(req: NextRequest) {
                 '3': { name: 'Dadabee', price: 780 },
             };
 
-            if (input === '5') {
+            if (input === '4') {
                 await sessionRef.update({ step: 'MAIN_MENU' });
                 return respond(
                     USERID,
@@ -231,18 +231,13 @@ export async function POST(req: NextRequest) {
                 );
             }
 
-            if (input === '4') {
-                await sessionRef.update({ step: 'ENTER_CUSTOM_AMOUNT' });
-                return respond(USERID, MSISDN, USERDATA, 'Enter the amount you wish to pay (GHS):', true);
-            }
-
             const pkg = packages[input];
             if (!pkg) {
                 return respond(
                     USERID,
                     MSISDN,
                     USERDATA,
-                    'Invalid selection. Pick your pack:\n\n1. Starter - GHS 350\n2. Ready Box - GHS 580\n3. Dadabee - GHS 780\n4. Custom - GHS ???\n5. Back',
+                    'Invalid selection. Pick your pack:\n\n1. Starter - GHS 350\n2. Ready Box - GHS 580\n3. Dadabee - GHS 780\n4. Back',
                     true
                 );
             }
@@ -251,22 +246,6 @@ export async function POST(req: NextRequest) {
                 step: 'ENTER_SCHOOL',
                 selectedPackage: pkg.name,
                 packagePrice: pkg.price,
-            });
-
-            return respond(USERID, MSISDN, USERDATA, 'Enter School Name:', true);
-        }
-
-        // ─── ENTER CUSTOM AMOUNT ──────────────────
-        if (session.step === 'ENTER_CUSTOM_AMOUNT') {
-            const amount = parseFloat(input);
-            if (isNaN(amount) || amount <= 0) {
-                return respond(USERID, MSISDN, USERDATA, 'Invalid amount. Please enter a valid number (e.g. 100):', true);
-            }
-
-            await sessionRef.update({
-                step: 'ENTER_SCHOOL',
-                selectedPackage: 'Custom Payment',
-                packagePrice: amount,
             });
 
             return respond(USERID, MSISDN, USERDATA, 'Enter School Name:', true);
