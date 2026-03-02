@@ -121,12 +121,12 @@ export async function POST(req: NextRequest) {
                     );
 
                 case '2':
-                    await sessionRef.update({ step: 'SEE_PACKAGES_1' });
+                    await sessionRef.update({ step: 'SEE_PACKAGES_MENU' });
                     return respond(
                         USERID,
                         MSISDN,
                         USERDATA,
-                        'Packs(1/2):\n1.Starter(350GHS):Milo,Nido,Gari,Sugar,Shito,Biscuits,soap\n2.Ready(580GHS):Starter+Milk,Drinks,Snacks,Books\n3.Next\n4.Back',
+                        'Pick to View ProviGO packages\n1. Starter\n2. Ready Box\n3. Dadabee\n4. Back',
                         true
                     );
 
@@ -161,55 +161,77 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // ─── SEE PACKAGES ─────────────────────────
-        if (session.step === 'SEE_PACKAGES_1') {
-            if (input === '4') {
-                await sessionRef.update({ step: 'MAIN_MENU' });
-                return respond(
-                    USERID,
-                    MSISDN,
-                    USERDATA,
-                    'Welcome to ProviGO\nComfort for Parents and Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
-                    true
-                );
+        // ─── SEE PACKAGES MENU ────────────────────
+        if (session.step === 'SEE_PACKAGES_MENU') {
+            switch (input) {
+                case '1':
+                    await sessionRef.update({ step: 'VIEW_STARTER' });
+                    return respond(
+                        USERID,
+                        MSISDN,
+                        USERDATA,
+                        '1. Starter (350): Essentials like Milo, Nido, Gari, Sugar, Shito, Biscuits & Toiletries.\n2. Back',
+                        true
+                    );
+                case '2':
+                    await sessionRef.update({ step: 'VIEW_READY_BOX' });
+                    return respond(
+                        USERID,
+                        MSISDN,
+                        USERDATA,
+                        '1. Ready Box (580): Essential Starter kit + Milk, Milo, Nido, Snacks & Books.\n2. Back',
+                        true
+                    );
+                case '3':
+                    await sessionRef.update({ step: 'VIEW_DADABEE' });
+                    return respond(
+                        USERID,
+                        MSISDN,
+                        USERDATA,
+                        '1. Dadabee (780): Full box: Double Milo/ Nido, Cornflakes, plenty Snacks, 15 Books & huge Soap pack.\n2. Back',
+                        true
+                    );
+                case '4':
+                    await sessionRef.update({ step: 'MAIN_MENU' });
+                    return respond(
+                        USERID,
+                        MSISDN,
+                        USERDATA,
+                        'Welcome to ProviGO\nComfort for Parents and Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
+                        true
+                    );
+                default:
+                    return respond(
+                        USERID,
+                        MSISDN,
+                        USERDATA,
+                        'Invalid option. Pick to View ProviGO packages\n1. Starter\n2. Ready Box\n3. Dadabee\n4. Back',
+                        true
+                    );
             }
-            if (input === '3') {
-                await sessionRef.update({ step: 'SEE_PACKAGES_2' });
-                return respond(
-                    USERID,
-                    MSISDN,
-                    USERDATA,
-                    'Packs(2/2):\n3.Dadabee(780GHS):Double Milo,Cornflakes,snacks,15 Books,huge Soap pack.\n4.Back',
-                    true
-                );
-            }
-            return respond(
-                USERID,
-                MSISDN,
-                USERDATA,
-                'Packs(1/2):\n1.Starter(350GHS):Milo,Nido,Gari,Sugar,Shito,Biscuits,soap\n2.Ready(580GHS):Starter+Milk,Drinks,Snacks,Books\n3.Next\n4.Back',
-                true
-            );
         }
 
-        if (session.step === 'SEE_PACKAGES_2') {
-            if (input === '4') {
-                await sessionRef.update({ step: 'MAIN_MENU' });
+        if (session.step === 'VIEW_STARTER' || session.step === 'VIEW_READY_BOX' || session.step === 'VIEW_DADABEE') {
+            if (input === '2') {
+                await sessionRef.update({ step: 'SEE_PACKAGES_MENU' });
                 return respond(
                     USERID,
                     MSISDN,
                     USERDATA,
-                    'Welcome to ProviGO\nComfort for Parents and Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
+                    'Pick to View ProviGO packages\n1. Starter\n2. Ready Box\n3. Dadabee\n4. Back',
                     true
                 );
             }
-            return respond(
-                USERID,
-                MSISDN,
-                USERDATA,
-                'Packs(2/2):\n3.Dadabee(780GHS):Double Milo,Cornflakes,snacks,15 Books,huge Soap pack.\n4.Back',
-                true
-            );
+            // If they pick 1 (the package itself), we can either stay or maybe redirect to buy? 
+            // The prompt says "when they pick option 1 they should see...", and "2. Back".
+            // So they stay on the screen unless they press 2.
+            const msg = session.step === 'VIEW_STARTER'
+                ? '1. Starter (350): Essentials like Milo, Nido, Gari, Sugar, Shito, Biscuits & Toiletries.\n2. Back'
+                : session.step === 'VIEW_READY_BOX'
+                    ? '1. Ready Box (580): Essential Starter kit + Milk, Milo, Nido, Snacks & Books.\n2. Back'
+                    : '1. Dadabee (780): Full box: Double Milo/ Nido, Cornflakes, plenty Snacks, 15 Books & huge Soap pack.\n2. Back';
+
+            return respond(USERID, MSISDN, USERDATA, msg, true);
         }
 
         // ─── SELECT PACKAGE ───────────────────────
