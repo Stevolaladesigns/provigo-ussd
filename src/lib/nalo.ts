@@ -68,18 +68,10 @@ export async function generateNaloToken(): Promise<string | null> {
 function generateTransHash(params: {
     merchantId: string;
     accountNumber: string;
-    amount: number;
+    amountStr: string;
     reference: string;
 }): string {
-    // Nalo docs expect local format (e.g. 024...) for the hash, not 233 format.
-    let localNumber = params.accountNumber.replace(/\D/g, '');
-    if (localNumber.startsWith('233')) {
-        localNumber = '0' + localNumber.substring(3);
-    }
-    
-    // Nalo docs example shows amount as "50.00" (2 decimal places) in the hash message.
-    const amountStr = params.amount.toFixed(2);
-    const message = `${params.merchantId}${localNumber}${amountStr}${params.reference}`;
+    const message = `${params.merchantId}${params.accountNumber}${params.amountStr}${params.reference}`;
     console.log('Nalo Hash Message:', message);
     return createHmac('sha256', NALO_SECRET_KEY).update(message).digest('hex');
 }
@@ -94,10 +86,19 @@ export async function createNaloCollection(params: NaloCollectionParams): Promis
             return { success: false, code: 'TOKEN_ERROR', message: 'Failed to generate Nalo token' };
         }
 
+        // Nalo docs expect local format (e.g. 024...) for the hash and body.
+        let localNumber = params.accountNumber.replace(/\D/g, '');
+        if (localNumber.startsWith('233')) {
+            localNumber = '0' + localNumber.substring(3);
+        }
+
+        // Nalo docs show amount as "50.00" in the hash message.
+        const amountStr = params.amount.toFixed(2);
+
         const trans_hash = generateTransHash({
             merchantId: NALO_MERCHANT_ID,
-            accountNumber: params.accountNumber,
-            amount: params.amount,
+            accountNumber: localNumber,
+            amountStr: amountStr,
             reference: params.reference,
         });
 
@@ -105,10 +106,10 @@ export async function createNaloCollection(params: NaloCollectionParams): Promis
             merchant_id: NALO_MERCHANT_ID,
             service_name: 'MOMO_TRANSACTION',
             trans_hash: trans_hash,
-            account_number: params.accountNumber,
+            account_number: localNumber, // Use local format in body too
             account_name: params.accountName,
             channel: params.network,
-            amount: params.amount,
+            amount: amountStr, // Use string with decimals in body too
             reference: params.reference,
             callback: NALO_CALLBACK_URL,
             description: params.description,

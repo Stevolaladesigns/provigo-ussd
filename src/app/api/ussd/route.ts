@@ -406,23 +406,39 @@ export async function POST(req: NextRequest) {
                         naloOrderId: response.data.order_id,
                         paymentInitiated: true,
                     });
+
+                    // Clean up session — Nalo sends USSD prompt directly to customer
+                    await sessionRef.delete();
+
+                    return respond(
+                        USERID,
+                        MSISDN,
+                        USERDATA,
+                        'Payment request sent!\nApprove the prompt on your phone to complete payment.\n\nThank you for choosing ProviGO!',
+                        false
+                    );
                 } else {
                     console.error('Nalo payment initiation failed:', response);
+                    const errorMessage = response.message || (typeof response.error === 'string' ? response.error : 'Unknown Error');
+                    
+                    return respond(
+                        USERID,
+                        MSISDN,
+                        USERDATA,
+                        `Payment Failed: ${errorMessage}\n\nPlease try again or contact support.`,
+                        false
+                    );
                 }
             } catch (error) {
                 console.error('Nalo payment error:', error);
+                return respond(
+                    USERID,
+                    MSISDN,
+                    USERDATA,
+                    'An error occurred while initiating payment. Please try again later.',
+                    false
+                );
             }
-
-            // Clean up session — Nalo sends USSD prompt directly to customer
-            await sessionRef.delete();
-
-            return respond(
-                USERID,
-                MSISDN,
-                USERDATA,
-                'Payment request sent!\nApprove the prompt on your phone to complete payment.\n\nThank you for choosing ProviGO!',
-                false
-            );
         }
 
 
