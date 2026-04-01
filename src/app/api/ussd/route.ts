@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { chargeWithMobileMoney, submitOTP } from '@/lib/paystack';
+import { createNaloCollection, NaloNetwork } from '@/lib/nalo';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const NALO_USER_ID = process.env.NALO_USER_ID || 'PROVISSD';
@@ -20,7 +20,7 @@ interface SessionData {
     schoolName?: string;
     studentName?: string;
     houseYear?: string;
-    paystackReference?: string;
+    momoReferenceId?: string;
     createdAt: FirebaseFirestore.Timestamp;
 }
 
@@ -324,7 +324,7 @@ export async function POST(req: NextRequest) {
                     USERID,
                     MSISDN,
                     USERDATA,
-                    'Select Mobile Money Network:\n1. MTN\n2. Telecel / Vodafone\n3. AT / AirtelTigo',
+                    'Select Network:\n1. MTN\n2. Telecel\n3. AT',
                     true
                 );
             }
@@ -340,19 +340,19 @@ export async function POST(req: NextRequest) {
 
         // ─── SELECT NETWORK ───────────────────────
         if (session.step === 'SELECT_NETWORK') {
-            const networks: Record<string, string> = {
-                '1': 'mtn',
-                '2': 'vod',
-                '3': 'tgo',
+            const networkMap: Record<string, NaloNetwork> = {
+                '1': 'MTN',
+                '2': 'TELECEL',
+                '3': 'AT',
             };
 
-            const provider = networks[input];
-            if (!provider) {
+            const network = networkMap[input];
+            if (!network) {
                 return respond(
                     USERID,
                     MSISDN,
                     USERDATA,
-                    'Invalid network.\n1. MTN\n2. Telecel/Vodafone\n3. AT/AirtelTigo',
+                    'Invalid network.\n1. MTN\n2. Telecel\n3. AT',
                     true
                 );
             }
@@ -361,138 +361,71 @@ export async function POST(req: NextRequest) {
             const freshDoc = await sessionRef.get();
             const s = freshDoc.data() as SessionData;
 
-            // Format phone number to start with 0 for Paystack and SMS
-            let formattedPhone = MSISDN;
-            if (formattedPhone.startsWith('+233')) formattedPhone = '0' + formattedPhone.substring(4);
-            if (formattedPhone.startsWith('233')) formattedPhone = '0' + formattedPhone.substring(3);
+            // Format phone number to international format for Nalo (e.g. 233xxxxxxxx)
+            let msisdnForNalo = MSISDN.replace(/\D/g, '');
+            if (msisdnForNalo.startsWith('0')) msisdnForNalo = '233' + msisdnForNalo.substring(1);
+
+            // Also keep a local format (starting with 0) for SMS
+            let localPhone = MSISDN.replace(/\D/g, '');
+            if (localPhone.startsWith('233')) localPhone = '0' + localPhone.substring(3);
 
             // Create order in Firestore
             const orderRef = adminDb.collection('orders').doc();
+            
             const orderData = {
-                orderId: '', // Will be set after payment
+                orderId: '', // Will be updated on callback with human-readable ID
                 studentName: s.studentName,
                 schoolName: s.schoolName,
                 houseYear: s.houseYear,
                 package: s.selectedPackage,
                 price: s.packagePrice,
-                phoneNumber: formattedPhone, // Use formatted phone for Paystack & SMS
+                phoneNumber: localPhone,
                 paymentStatus: 'pending',
                 orderStatus: 'Processing',
                 createdAt: FieldValue.serverTimestamp(),
                 updatedAt: FieldValue.serverTimestamp(),
                 firestoreDocId: orderRef.id,
+                paymentChannel: network,
+                paymentGateway: 'nalo',
             };
 
             await orderRef.set(orderData);
 
-            // Initialize Paystack transaction using Charge API for STK Push
-            const email = `${formattedPhone}@provigo.app`;
-            const amountInPesewas = (s.packagePrice || 0) * 100;
-
             try {
-                const paystackResponse = await chargeWithMobileMoney({
-                    email,
-                    amount: amountInPesewas,
-                    mobile_money: {
-                        phone: formattedPhone,
-                        provider,
-                    },
-                    metadata: {
-                        studentName: s.studentName || '',
-                        schoolName: s.schoolName || '',
-                        package: s.selectedPackage || '',
-                        houseYear: s.houseYear || '',
-                        phoneNumber: MSISDN,
-                        orderId: orderRef.id,
-                    },
+                const response = await createNaloCollection({
+                    accountNumber: msisdnForNalo,
+                    accountName: s.studentName || 'ProviGO Customer',
+                    amount: s.packagePrice || 0,
+                    network: network,
+                    reference: orderRef.id, // Use Firestore doc ID as reference
+                    description: `ProviGO ${s.selectedPackage} package for ${s.studentName}`,
                 });
 
-                // Update order with Paystack reference
-                if (paystackResponse.status || paystackResponse.data?.reference) {
+                if (response.success && response.data?.order_id) {
                     await orderRef.update({
-                        paystackReference: paystackResponse.data?.reference || 'N/A',
-                        paymentInitiated: true
+                        naloOrderId: response.data.order_id,
+                        paymentInitiated: true,
                     });
-
-                    // If Paystack requires an OTP, prompt the user
-                    if (paystackResponse.data?.status === 'send_otp') {
-                        await sessionRef.update({
-                            step: 'ENTER_OTP',
-                            paystackReference: paystackResponse.data.reference,
-                        });
-
-                        return respond(
-                            USERID,
-                            MSISDN,
-                            USERDATA,
-                            'Please enter the OTP sent to you via SMS to authorize the payment:',
-                            true
-                        );
-                    }
+                } else {
+                    console.error('Nalo payment initiation failed:', response);
                 }
             } catch (error) {
-                console.error('Paystack error:', error);
+                console.error('Nalo payment error:', error);
             }
 
-            // Clean up session since no OTP is required
+            // Clean up session — Nalo sends USSD prompt directly to customer
             await sessionRef.delete();
 
             return respond(
                 USERID,
                 MSISDN,
                 USERDATA,
-                'Payment request sent to your phone.\nPlease complete the Mobile Money payment to confirm your order.\n\nThank you for choosing ProviGO!',
+                'Payment request sent!\nApprove the prompt on your phone to complete payment.\n\nThank you for choosing ProviGO!',
                 false
             );
         }
 
-        // ─── ENTER OTP ─────────────────────────────
-        if (session.step === 'ENTER_OTP') {
-            if (!input || input.length < 3) {
-                return respond(USERID, MSISDN, USERDATA, 'Please enter a valid OTP:', true);
-            }
 
-            if (!session.paystackReference) {
-                await sessionRef.delete();
-                return respond(USERID, MSISDN, USERDATA, 'Session error. Please try again.', false);
-            }
-
-            try {
-                const otpResponse = await submitOTP({
-                    otp: input,
-                    reference: session.paystackReference,
-                });
-
-                if (otpResponse.status) {
-                    await sessionRef.delete();
-                    return respond(
-                        USERID,
-                        MSISDN,
-                        USERDATA,
-                        'A prompt has been sent to your phone. Please enter your MoMo PIN to approve the transaction.\n\nThank you for choosing ProviGO!',
-                        false
-                    );
-                } else {
-                    return respond(
-                        USERID,
-                        MSISDN,
-                        USERDATA,
-                        `Verification failed: \n${otpResponse.message || 'Invalid OTP'}\nPlease enter the correct OTP:`,
-                        true
-                    );
-                }
-            } catch (error) {
-                console.error('Paystack OTP error:', error);
-                await sessionRef.delete();
-                return respond(
-                    USERID,
-                    MSISDN,
-                    USERDATA,
-                    'An error occurred verifying the OTP. Please try again later.',
-                    false
-                );
-            }
-        }
 
         // ─── TRACK ORDER ──────────────────────────
         if (session.step === 'TRACK_ORDER') {

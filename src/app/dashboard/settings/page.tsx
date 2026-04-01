@@ -70,7 +70,7 @@ export default function SettingsPage() {
                         </div>
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between text-gray-600">
-                                <span>Paystack</span>
+                                <span>Hubtel</span>
                                 <span className="text-green-600">Connected</span>
                             </div>
                             <div className="flex justify-between text-gray-600">
