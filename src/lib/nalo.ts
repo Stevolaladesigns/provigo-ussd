@@ -71,9 +71,10 @@ function generateTransHash(params: {
     amount: number;
     reference: string;
 }): string {
-    // Format amount to 2 decimal places if needed, but Nalo example shows "50" for 50 or "0.2" for 0.2.
-    // The doc says "amount" without separators.
-    const message = `${params.merchantId}${params.accountNumber}${params.amount}${params.reference}`;
+    // Nalo docs example shows amount as "50.00" (2 decimal places) in the hash message.
+    const amountStr = params.amount.toFixed(2);
+    const message = `${params.merchantId}${params.accountNumber}${amountStr}${params.reference}`;
+    console.log('Nalo Hash Message:', message);
     return createHmac('sha256', NALO_SECRET_KEY).update(message).digest('hex');
 }
 
