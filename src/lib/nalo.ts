@@ -55,7 +55,7 @@ export async function generateNaloToken(): Promise<string | null> {
         }
         console.error('Nalo Token Generation Failed:', data);
         return null;
-    } catch (error) {
+    } catch (error: any) {
         console.error('Nalo Token Generation Error:', error);
         return null;
     }
@@ -127,13 +127,26 @@ export async function createNaloCollection(params: NaloCollectionParams): Promis
             body: JSON.stringify(requestBody),
         });
 
-        const data = await response.json();
+        const data = await response.json().catch(() => ({ 
+            success: false, 
+            message: `Invalid JSON response (Status: ${response.status} ${response.statusText})` 
+        }));
+        
         console.log('Nalo Collection Response:', JSON.stringify(data, null, 2));
 
+        if (!response.ok && !data.message) {
+            data.message = `HTTP error! Status: ${response.status} ${response.statusText}`;
+        }
+
         return data;
-    } catch (error) {
+    } catch (error: any) {
         console.error('Nalo Collection Error:', error);
-        return { success: false, code: 'EXCEPTION', error };
+        return { 
+            success: false, 
+            code: 'EXCEPTION', 
+            message: error.message || 'An unexpected exception occurred.',
+            error: error.toString()
+        };
     }
 }
 

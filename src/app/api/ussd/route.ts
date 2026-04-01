@@ -419,13 +419,14 @@ export async function POST(req: NextRequest) {
                     );
                 } else {
                     console.error('Nalo payment initiation failed:', response);
-                    const errorMessage = response.message || (typeof response.error === 'string' ? response.error : 'Unknown Error');
+                    const errorCode = response.code || 'ERROR';
+                    const errorMessage = response.message || (typeof response.error === 'string' ? response.error : JSON.stringify(response.error) || 'Unknown Error');
                     
                     return respond(
                         USERID,
                         MSISDN,
                         USERDATA,
-                        `Payment Failed: ${errorMessage}\n\nPlease try again or contact support.`,
+                        `Payment Failed (${errorCode}):\n${errorMessage}\n\nPlease try again or contact support.`,
                         false
                     );
                 }
