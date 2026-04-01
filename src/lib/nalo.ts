@@ -101,7 +101,7 @@ export async function createNaloCollection(params: NaloCollectionParams): Promis
             trans_hash: trans_hash,
             account_number: params.accountNumber,
             account_name: params.accountName,
-            network: params.network,
+            channel: params.network,
             amount: params.amount,
             reference: params.reference,
             callback: NALO_CALLBACK_URL,

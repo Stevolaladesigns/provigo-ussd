@@ -24,10 +24,11 @@ interface SessionData {
     createdAt: FirebaseFirestore.Timestamp;
 }
 
-function respond(userid: string, msisdn: string, msg: string, continueSession: boolean) {
+function respond(userid: string, msisdn: string, userdata: string, msg: string, continueSession: boolean) {
     const responseData = {
         USERID: userid,
         MSISDN: msisdn,
+        USERDATA: userdata,
         MSG: msg,
         MSGTYPE: continueSession,
     };
@@ -51,18 +52,17 @@ export async function POST(req: NextRequest) {
             MSGTYPE = body.MSGTYPE;
         } else {
             const formData = await req.formData();
-            const entries = Object.fromEntries(formData.entries());
-            console.log('Incoming USSD Form Data:', JSON.stringify(entries));
-            MSISDN = entries.MSISDN as string || '';
-            USERDATA = entries.USERDATA as string || '';
-            USERID = entries.USERID as string || '';
-            const msgTypeVal = entries.MSGTYPE;
+            console.log('Incoming USSD Form Data:', Object.fromEntries(formData.entries()));
+            MSISDN = formData.get('MSISDN') as string || '';
+            USERDATA = formData.get('USERDATA') as string || '';
+            USERID = formData.get('USERID') as string || '';
+            const msgTypeVal = formData.get('MSGTYPE');
             MSGTYPE = msgTypeVal === 'true' || msgTypeVal === '1';
         }
 
         if (!USERID) {
             console.error('Missing USERID in request');
-            return respond(NALO_USER_ID, MSISDN, 'Invalid request. Please try again.', false);
+            return respond(NALO_USER_ID, MSISDN, USERDATA, 'Invalid request. Please try again.', false);
         }
 
         const sessionRef = adminDb.collection('ussd_sessions').doc(MSISDN);
@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
             return respond(
                 USERID,
                 MSISDN,
+                USERDATA,
                 'Welcome to ProviGO\nComfort for Parents and Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
                 true
             );
@@ -114,6 +115,7 @@ export async function POST(req: NextRequest) {
                     return respond(
                         USERID,
                         MSISDN,
+                        USERDATA,
                         'Pick your pack:\n\n1. Starter - GHS 350\n2. Ready Box - GHS 580\n3. Dadabee - GHS 780\n4. Back',
                         true
                     );
@@ -123,6 +125,7 @@ export async function POST(req: NextRequest) {
                     return respond(
                         USERID,
                         MSISDN,
+                        USERDATA,
                         'Pick to View ProviGO packages\n1. Starter\n2. Ready Box\n3. Dadabee\n4. Back',
                         true
                     );
@@ -132,6 +135,7 @@ export async function POST(req: NextRequest) {
                     return respond(
                         USERID,
                         MSISDN,
+                        USERDATA,
                         'Enter Order ID or Student Name:',
                         true
                     );
@@ -141,6 +145,7 @@ export async function POST(req: NextRequest) {
                     return respond(
                         USERID,
                         MSISDN,
+                        USERDATA,
                         'Contact ProviGO:\n\nCall/WhatsApp: 0247112620\nEmail: provigogh@gmail.com\n\nThank you!',
                         false
                     );
@@ -149,6 +154,7 @@ export async function POST(req: NextRequest) {
                     return respond(
                         USERID,
                         MSISDN,
+                        USERDATA,
                         'Invalid option. Please select:\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
                         true
                     );
@@ -163,6 +169,7 @@ export async function POST(req: NextRequest) {
                     return respond(
                         USERID,
                         MSISDN,
+                        USERDATA,
                         '1. Starter (350): Essentials like Milo, Nido, Gari, Sugar, Shito, Biscuits & Toiletries.\n2. Back',
                         true
                     );
@@ -171,6 +178,7 @@ export async function POST(req: NextRequest) {
                     return respond(
                         USERID,
                         MSISDN,
+                        USERDATA,
                         '1. Ready Box (580): Essential Starter kit + Milk, Milo, Nido, Snacks & Books.\n2. Back',
                         true
                     );
@@ -179,6 +187,7 @@ export async function POST(req: NextRequest) {
                     return respond(
                         USERID,
                         MSISDN,
+                        USERDATA,
                         '1. Dadabee (780): Full box: Double Milo/ Nido, Cornflakes, plenty Snacks, 15 Books & huge Soap pack.\n2. Back',
                         true
                     );
@@ -187,6 +196,7 @@ export async function POST(req: NextRequest) {
                     return respond(
                         USERID,
                         MSISDN,
+                        USERDATA,
                         'Welcome to ProviGO\nComfort for Parents and Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
                         true
                     );
@@ -194,6 +204,7 @@ export async function POST(req: NextRequest) {
                     return respond(
                         USERID,
                         MSISDN,
+                        USERDATA,
                         'Invalid option. Pick to View ProviGO packages\n1. Starter\n2. Ready Box\n3. Dadabee\n4. Back',
                         true
                     );
@@ -206,6 +217,7 @@ export async function POST(req: NextRequest) {
                 return respond(
                     USERID,
                     MSISDN,
+                    USERDATA,
                     'Pick to View ProviGO packages\n1. Starter\n2. Ready Box\n3. Dadabee\n4. Back',
                     true
                 );
@@ -219,7 +231,7 @@ export async function POST(req: NextRequest) {
                     ? '1. Ready Box (580): Essential Starter kit + Milk, Milo, Nido, Snacks & Books.\n2. Back'
                     : '1. Dadabee (780): Full box: Double Milo/ Nido, Cornflakes, plenty Snacks, 15 Books & huge Soap pack.\n2. Back';
 
-            return respond(USERID, MSISDN, msg, true);
+            return respond(USERID, MSISDN, USERDATA, msg, true);
         }
 
         // ─── SELECT PACKAGE ───────────────────────
@@ -235,6 +247,7 @@ export async function POST(req: NextRequest) {
                 return respond(
                     USERID,
                     MSISDN,
+                    USERDATA,
                     'Welcome to ProviGO\nComfort for Parents and Care for Students\n\n1. Buy Provision\n2. See Packages\n3. Track Order\n4. Contact Us',
                     true
                 );
@@ -245,6 +258,7 @@ export async function POST(req: NextRequest) {
                 return respond(
                     USERID,
                     MSISDN,
+                    USERDATA,
                     'Invalid selection. Pick your pack:\n\n1. Starter - GHS 350\n2. Ready Box - GHS 580\n3. Dadabee - GHS 780\n4. Back',
                     true
                 );
@@ -256,31 +270,31 @@ export async function POST(req: NextRequest) {
                 packagePrice: pkg.price,
             });
 
-            return respond(USERID, MSISDN, 'Enter School Name:', true);
+            return respond(USERID, MSISDN, USERDATA, 'Enter School Name:', true);
         }
 
         // ─── ENTER SCHOOL ─────────────────────────
         if (session.step === 'ENTER_SCHOOL') {
             if (!input || input.length < 2) {
-                return respond(USERID, MSISDN, 'Please enter a valid school name:', true);
+                return respond(USERID, MSISDN, USERDATA, 'Please enter a valid school name:', true);
             }
             await sessionRef.update({ step: 'ENTER_STUDENT', schoolName: input });
-            return respond(USERID, MSISDN, 'Enter Student Name:', true);
+            return respond(USERID, MSISDN, USERDATA, 'Enter Student Name:', true);
         }
 
         // ─── ENTER STUDENT ────────────────────────
         if (session.step === 'ENTER_STUDENT') {
             if (!input || input.length < 2) {
-                return respond(USERID, MSISDN, 'Please enter a valid student name:', true);
+                return respond(USERID, MSISDN, USERDATA, 'Please enter a valid student name:', true);
             }
             await sessionRef.update({ step: 'ENTER_HOUSE', studentName: input });
-            return respond(USERID, MSISDN, 'Enter House and Year (e.g. Akufo Hall, Year 2):', true);
+            return respond(USERID, MSISDN, USERDATA, 'Enter House and Year (e.g. Akufo Hall, Year 2):', true);
         }
 
         // ─── ENTER HOUSE & YEAR ───────────────────
         if (session.step === 'ENTER_HOUSE') {
             if (!input || input.length < 2) {
-                return respond(USERID, MSISDN, 'Please enter a valid house and year:', true);
+                return respond(USERID, MSISDN, USERDATA, 'Please enter a valid house and year:', true);
             }
             await sessionRef.update({ step: 'CONFIRMATION', houseYear: input });
 
@@ -291,6 +305,7 @@ export async function POST(req: NextRequest) {
             return respond(
                 USERID,
                 MSISDN,
+                USERDATA,
                 `Send ${s.selectedPackage} to ${s.studentName} at ${s.schoolName}?\nHouse/Year: ${s.houseYear}\nTotal: GHS ${s.packagePrice}\n\n1. Pay with Momo\n2. Cancel`,
                 true
             );
@@ -300,7 +315,7 @@ export async function POST(req: NextRequest) {
         if (session.step === 'CONFIRMATION') {
             if (input === '2') {
                 await sessionRef.delete();
-                return respond(USERID, MSISDN, 'Order cancelled. Thank you for using ProviGO!', false);
+                return respond(USERID, MSISDN, USERDATA, 'Order cancelled. Thank you for using ProviGO!', false);
             }
 
             if (input === '1') {
@@ -308,6 +323,7 @@ export async function POST(req: NextRequest) {
                 return respond(
                     USERID,
                     MSISDN,
+                    USERDATA,
                     'Select Network:\n1. MTN\n2. Telecel\n3. AT',
                     true
                 );
@@ -316,6 +332,7 @@ export async function POST(req: NextRequest) {
             return respond(
                 USERID,
                 MSISDN,
+                USERDATA,
                 'Invalid option.\n\n1. Pay with Momo\n2. Cancel',
                 true
             );
@@ -334,6 +351,7 @@ export async function POST(req: NextRequest) {
                 return respond(
                     USERID,
                     MSISDN,
+                    USERDATA,
                     'Invalid network.\n1. MTN\n2. Telecel\n3. AT',
                     true
                 );
@@ -401,6 +419,7 @@ export async function POST(req: NextRequest) {
             return respond(
                 USERID,
                 MSISDN,
+                USERDATA,
                 'Payment request sent!\nApprove the prompt on your phone to complete payment.\n\nThank you for choosing ProviGO!',
                 false
             );
@@ -411,7 +430,7 @@ export async function POST(req: NextRequest) {
         // ─── TRACK ORDER ──────────────────────────
         if (session.step === 'TRACK_ORDER') {
             if (!input || input.length < 2) {
-                return respond(USERID, MSISDN, 'Please enter a valid Order ID or Student Name:', true);
+                return respond(USERID, MSISDN, USERDATA, 'Please enter a valid Order ID or Student Name:', true);
             }
 
             // Search by Order ID
@@ -436,6 +455,7 @@ export async function POST(req: NextRequest) {
                 return respond(
                     USERID,
                     MSISDN,
+                    USERDATA,
                     'Order not found. Please check and try again.',
                     false
                 );
@@ -445,6 +465,7 @@ export async function POST(req: NextRequest) {
             return respond(
                 USERID,
                 MSISDN,
+                USERDATA,
                 `Order Found:\n\nOrder ID: ${order.orderId || 'Pending'}\nPackage: ${order.package}\nPayment: ${order.paymentStatus === 'paid' ? 'Paid' : 'Pending'}\nStatus: ${order.orderStatus}\n\nThank you for using ProviGO!`,
                 false
             );
@@ -455,6 +476,7 @@ export async function POST(req: NextRequest) {
         return respond(
             USERID,
             MSISDN,
+            USERDATA,
             'Session expired. Please dial *920*332# again.',
             false
         );
@@ -464,6 +486,7 @@ export async function POST(req: NextRequest) {
         const resData = {
             USERID: USERID || NALO_USER_ID,
             MSISDN: MSISDN || '',
+            USERDATA: USERDATA || '',
             MSG: 'An error occurred. Please try again later.',
             MSGTYPE: false,
         };
