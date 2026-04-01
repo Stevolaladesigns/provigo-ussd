@@ -106,8 +106,9 @@ export async function createNaloCollection(params: NaloCollectionParams): Promis
             merchant_id: NALO_MERCHANT_ID,
             service_name: 'MOMO_TRANSACTION',
             trans_hash: trans_hash,
-            account_number: localNumber, // Use local format in body too
+            account_number: params.accountNumber, // Use 233 format in body (params.accountNumber is usually msisdnForNalo)
             account_name: params.accountName,
+            network: params.network, // Provide both for safety
             channel: params.network,
             amount: amountStr, // Use string with decimals in body too
             reference: params.reference,
@@ -127,15 +128,26 @@ export async function createNaloCollection(params: NaloCollectionParams): Promis
             body: JSON.stringify(requestBody),
         });
 
-        const data = await response.json().catch(() => ({ 
-            success: false, 
-            message: `Invalid JSON response (Status: ${response.status} ${response.statusText})` 
-        }));
+        // Capture raw response in case of non-JSON error
+        const rawText = await response.text();
+        let data: any;
+        try {
+            data = JSON.parse(rawText);
+        } catch (e) {
+            data = { 
+                success: false, 
+                message: `Invalid JSON response: ${rawText.substring(0, 500)} (Status: ${response.status} ${response.statusText})`
+            };
+        }
         
         console.log('Nalo Collection Response:', JSON.stringify(data, null, 2));
 
         if (!response.ok && !data.message) {
             data.message = `HTTP error! Status: ${response.status} ${response.statusText}`;
+            // Include raw data in message if available to reveal field errors in USSD
+            if (Object.keys(data).length > 2) {
+                data.message += ` Details: ${JSON.stringify(data)}`;
+            }
         }
 
         return data;
