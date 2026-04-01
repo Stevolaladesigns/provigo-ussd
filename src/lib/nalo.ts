@@ -106,11 +106,10 @@ export async function createNaloCollection(params: NaloCollectionParams): Promis
             merchant_id: NALO_MERCHANT_ID,
             service_name: 'MOMO_TRANSACTION',
             trans_hash: trans_hash,
-            account_number: params.accountNumber, // Use 233 format in body (params.accountNumber is usually msisdnForNalo)
+            account_number: localNumber, // Documentation sample uses local format (0...)
             account_name: params.accountName,
-            network: params.network, // Provide both for safety
-            channel: params.network,
-            amount: amountStr, // Use string with decimals in body too
+            network: params.network, // Documentation says 'network' is required
+            amount: params.amount, // Documentation sample uses number type (e.g. 0.11)
             reference: params.reference,
             callback: NALO_CALLBACK_URL,
             description: params.description,
